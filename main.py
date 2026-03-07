@@ -9,7 +9,6 @@ import database as db
 logging.basicConfig(level=logging.INFO)
 
 async def main():
-    # Инициализация БД
     await db.init_db()
     logging.info("Database initialized.")
 
