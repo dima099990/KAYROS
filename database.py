@@ -5,6 +5,7 @@ DB_NAME = "bot_database.db"
 async def init_db():
     """Создаёт таблицы, если их нет."""
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         # Таблица пользователей
         await db.execute('''
             CREATE TABLE IF NOT EXISTS users (
@@ -13,7 +14,7 @@ async def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        # Таблица сообщений с каскадным удалением
+        # Таблица сообщений
         await db.execute('''
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +25,7 @@ async def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
             )
         ''')
-        # Таблица заказов (обновлённая)
+        # Таблица заказов
         await db.execute('''
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,28 +64,33 @@ async def init_db():
 # ---------- Пользователи ----------
 async def get_user_language(user_id: int) -> str | None:
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         async with db.execute('SELECT language FROM users WHERE user_id = ?', (user_id,)) as cursor:
             row = await cursor.fetchone()
             return row[0] if row else None
 
 async def create_user(user_id: int, language: str):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         await db.execute('INSERT OR IGNORE INTO users (user_id, language) VALUES (?, ?)', (user_id, language))
         await db.commit()
 
 async def update_user_language(user_id: int, language: str):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         await db.execute('UPDATE users SET language = ? WHERE user_id = ?', (language, user_id))
         await db.commit()
 
 async def delete_user(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         await db.execute('DELETE FROM users WHERE user_id = ?', (user_id,))
         await db.commit()
 
 # ---------- Сообщения ----------
 async def save_message(user_id: int, text: str, role: str):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         await db.execute(
             'INSERT INTO messages (user_id, message_text, role) VALUES (?, ?, ?)',
             (user_id, text, role)
@@ -93,11 +99,8 @@ async def save_message(user_id: int, text: str, role: str):
 
 # ---------- Заказы ----------
 async def create_order(user_id: int, items: list, total_amount: float) -> int:
-    """
-    Создаёт заказ и его позиции.
-    items: список кортежей (tariff, quantity, price_per_item)
-    """
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         cursor = await db.execute(
             'INSERT INTO orders (user_id, status, total_amount) VALUES (?, ?, ?)',
             (user_id, 'pending', total_amount)
@@ -113,6 +116,7 @@ async def create_order(user_id: int, items: list, total_amount: float) -> int:
 
 async def update_order_status(order_id: int, status: str, payment_id: str = None):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         if payment_id:
             await db.execute(
                 'UPDATE orders SET status = ?, payment_id = ? WHERE id = ?',
@@ -124,23 +128,17 @@ async def update_order_status(order_id: int, status: str, payment_id: str = None
 
 async def get_user_orders(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         async with db.execute(
             'SELECT id, status, total_amount, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC',
             (user_id,)
         ) as cursor:
             return await cursor.fetchall()
 
-async def get_order_details(order_id: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        async with db.execute('SELECT * FROM orders WHERE id = ?', (order_id,)) as cursor:
-            order = await cursor.fetchone()
-        async with db.execute('SELECT * FROM order_items WHERE order_id = ?', (order_id,)) as cursor:
-            items = await cursor.fetchall()
-        return order, items
-
 # ---------- Корзина ----------
 async def add_to_cart(user_id: int, tariff: str):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         await db.execute('''
             INSERT INTO cart (user_id, tariff, quantity)
             VALUES (?, ?, 1)
@@ -150,6 +148,7 @@ async def add_to_cart(user_id: int, tariff: str):
 
 async def remove_from_cart(user_id: int, tariff: str, remove_all: bool = False):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         if remove_all:
             await db.execute('DELETE FROM cart WHERE user_id = ? AND tariff = ?', (user_id, tariff))
         else:
@@ -163,10 +162,12 @@ async def remove_from_cart(user_id: int, tariff: str, remove_all: bool = False):
 
 async def get_cart(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         async with db.execute('SELECT tariff, quantity FROM cart WHERE user_id = ?', (user_id,)) as cursor:
             return await cursor.fetchall()
 
 async def clear_cart(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         await db.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
         await db.commit()

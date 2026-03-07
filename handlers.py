@@ -188,22 +188,17 @@ async def show_profile_handler(callback: CallbackQuery, state: FSMContext):
 async def show_help(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     language = await db.get_user_language(user_id)
-    help_text = (
-        "Этот бот помогает автоматизировать бизнес. Вы можете:\n"
-        "- Выбрать и купить тариф\n"
-        "- Управлять профилем\n"
-        "- Задавать вопросы по автоматизации (я передам их AI)"
+    contact_text = (
+        "📞 Служба поддержки: @support_username\n"
+        "Или напишите на email: support@example.com"
     ) if language == 'ru' else (
-        "This bot helps with business automation. You can:\n"
-        "- Choose and buy a tariff\n"
-        "- Manage your profile\n"
-        "- Ask questions about automation (I'll forward them to AI)"
+        "📞 Support: @support_username\n"
+        "Or email: support@example.com"
     )
+    # Возвращаем в главное меню после просмотра контактов
     markup = main_menu_keyboard(language)
-    await callback.message.edit_text(help_text, reply_markup=markup)
-    await state.set_state(DialogStates.main_menu)
+    await callback.message.edit_text(contact_text, reply_markup=markup)
     await callback.answer()
-
 # ---------- Товары и корзина ----------
 @router.callback_query(F.data.startswith("product_"))
 async def show_product_detail(callback: CallbackQuery, state: FSMContext):
